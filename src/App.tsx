@@ -129,7 +129,7 @@ export default function App() {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
             <Timer className="text-primary-foreground w-6 h-6" />
           </div>
-          <h1 className="font-bold text-xl tracking-tight">Productive</h1>
+          <h1 className="font-bold text-xl tracking-tight">Pogramer</h1>
         </div>
 
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -178,7 +178,7 @@ export default function App() {
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b bg-background/80 backdrop-blur-md z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <Timer className="text-primary w-6 h-6" />
-          <span className="font-bold text-lg">Productive</span>
+          <span className="font-bold text-lg">Pogramer</span>
         </div>
         <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-accent rounded-lg">
           <Menu className="w-6 h-6" />
@@ -208,7 +208,7 @@ export default function App() {
                   <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                     <Timer className="text-primary-foreground w-6 h-6" />
                   </div>
-                  <h1 className="font-bold text-xl">Productive</h1>
+                  <h1 className="font-bold text-xl">Pogramer</h1>
                 </div>
                 <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-accent rounded-lg">
                   <X className="w-6 h-6" />
