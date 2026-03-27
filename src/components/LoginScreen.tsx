@@ -43,10 +43,24 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       onLogin({ name, address });
     } catch (err: any) {
       console.error('Login error:', err);
-      setError('কিছু ভুল হয়েছে। আবার চেষ্টা করুন।');
+      if (err.code === 'auth/admin-restricted-operation') {
+        setError('ফায়ারবেস কনসোলে "Anonymous Authentication" বন্ধ আছে। দয়া করে এটি সচল করুন। (Authentication > Sign-in method > Anonymous > Enable)');
+        // Allow fallback to local mode for testing
+        setCanFallback(true);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('এই লগইন পদ্ধতিটি সচল করা হয়নি। দয়া করে ফায়ারবেস কনসোল চেক করুন।');
+      } else {
+        setError('কিছু ভুল হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const [canFallback, setCanFallback] = useState(false);
+
+  const handleFallback = () => {
+    onLogin({ name, address });
   };
 
   return (
@@ -69,9 +83,18 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive text-sm font-medium"
+              className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive text-sm font-medium space-y-2"
             >
-              {error}
+              <p>{error}</p>
+              {canFallback && (
+                <button 
+                  type="button"
+                  onClick={handleFallback}
+                  className="w-full py-2 bg-destructive/20 hover:bg-destructive/30 rounded-xl text-xs font-bold transition-colors"
+                >
+                  অফলাইন মোডে প্রবেশ করুন (শুধুমাত্র এই ব্রাউজারে)
+                </button>
+              )}
             </motion.div>
           )}
 
