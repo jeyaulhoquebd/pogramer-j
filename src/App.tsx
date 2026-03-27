@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Heart,
-  ShieldAlert
+  ShieldAlert,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -21,6 +22,10 @@ import Notes from './components/Notes';
 import Progress from './components/Progress';
 import RecoveryTracker from './components/RecoveryTracker';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { auth } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { AuthScreen, UserProfile } from './components/Auth';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress' | 'recovery';
 
@@ -41,9 +46,19 @@ export interface PomodoroState {
 }
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [activePage, setActivePage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Pomodoro Global State
   const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
@@ -90,6 +105,22 @@ export default function App() {
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ErrorBoundary>
+        <AuthScreen />
+      </ErrorBoundary>
+    );
+  }
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
@@ -122,7 +153,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r bg-card/50 backdrop-blur-sm">
         <div className="p-6 flex items-center gap-3">
@@ -156,6 +188,7 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t space-y-4">
+          <UserProfile />
           <button 
             onClick={toggleTheme}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
@@ -239,6 +272,7 @@ export default function App() {
               </nav>
 
               <div className="p-4 border-t space-y-4">
+                <UserProfile />
                 <button 
                   onClick={toggleTheme}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors text-muted-foreground"
@@ -269,5 +303,6 @@ export default function App() {
         </div>
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
