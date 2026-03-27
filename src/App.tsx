@@ -127,7 +127,7 @@ export default function App() {
       <aside className="hidden md:flex flex-col w-64 border-r bg-card/50 backdrop-blur-sm">
         <div className="p-6 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src="https://pbs.twimg.com/media/HEbd_28b0AEJvJD?format=jpg&name=small" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <h1 className="font-bold text-xl tracking-tight">Pogramer</h1>
         </div>
@@ -178,7 +178,7 @@ export default function App() {
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 border-b bg-background/80 backdrop-blur-md z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg overflow-hidden">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src="https://pbs.twimg.com/media/HEbd_28b0AEJvJD?format=jpg&name=small" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <span className="font-bold text-lg">Pogramer</span>
         </div>
@@ -208,7 +208,7 @@ export default function App() {
               <div className="p-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl overflow-hidden">
-                    <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src="https://pbs.twimg.com/media/HEbd_28b0AEJvJD?format=jpg&name=small" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <h1 className="font-bold text-xl">Pogramer</h1>
                 </div>
