@@ -20,8 +20,13 @@ async function startServer() {
   // Telegram Proxy API
   app.post("/api/telegram/send", async (req, res) => {
     const { message } = req.body;
-    const BOT_TOKEN = '8617732104:AAH_a2U4fzT3jQ1_quo1MVLGU150CDxGFhE';
-    const CHAT_ID = '8654581323';
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+    if (!BOT_TOKEN || !CHAT_ID) {
+      console.error('Telegram credentials are not configured in environment variables');
+      return res.status(500).json({ error: 'Telegram configuration missing' });
+    }
 
     console.log('Proxying Telegram message...');
 
