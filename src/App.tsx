@@ -47,10 +47,13 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
   const [lastReportSentDate, setLastReportSentDate] = useLocalStorage<string | null>('lastReportSentDate', null);
+  const [sendDailyReportEnabled, setSendDailyReportEnabled] = useLocalStorage<boolean>('sendDailyReportEnabled', false);
 
   // Daily Report Logic
   useEffect(() => {
     const checkAndSendReport = async () => {
+      if (!sendDailyReportEnabled) return;
+
       const now = new Date();
       const todayStr = now.toDateString();
       
@@ -72,7 +75,7 @@ export default function App() {
     checkAndSendReport(); // Initial check
 
     return () => clearInterval(interval);
-  }, [lastReportSentDate]);
+  }, [lastReportSentDate, sendDailyReportEnabled]);
 
   // Pomodoro Global State
   const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
@@ -130,13 +133,27 @@ export default function App() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard': return <Dashboard onNavigate={setActivePage} pomodoro={pomodoro} />;
+      case 'dashboard': return (
+        <Dashboard 
+          onNavigate={setActivePage} 
+          pomodoro={pomodoro} 
+          sendDailyReportEnabled={sendDailyReportEnabled}
+          setSendDailyReportEnabled={setSendDailyReportEnabled}
+        />
+      );
       case 'tasks': return <TaskManager />;
       case 'pomodoro': return <Pomodoro state={pomodoro} setState={setPomodoro} />;
       case 'notes': return <Notes />;
       case 'progress': return <Progress />;
       case 'recovery': return <RecoveryTracker />;
-      default: return <Dashboard onNavigate={setActivePage} pomodoro={pomodoro} />;
+      default: return (
+        <Dashboard 
+          onNavigate={setActivePage} 
+          pomodoro={pomodoro} 
+          sendDailyReportEnabled={sendDailyReportEnabled}
+          setSendDailyReportEnabled={setSendDailyReportEnabled}
+        />
+      );
     }
   };
 

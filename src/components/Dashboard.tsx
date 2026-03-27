@@ -27,6 +27,8 @@ import { RecoveryState } from '../types';
 interface DashboardProps {
   onNavigate: (page: any) => void;
   pomodoro: PomodoroState;
+  sendDailyReportEnabled: boolean;
+  setSendDailyReportEnabled: (enabled: boolean) => void;
 }
 
 const DEFAULT_PRAYER_TIMES = [
@@ -45,7 +47,12 @@ const QUOTES = [
   { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" }
 ];
 
-export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
+export default function Dashboard({ 
+  onNavigate, 
+  pomodoro, 
+  sendDailyReportEnabled, 
+  setSendDailyReportEnabled 
+}: DashboardProps) {
   const [time, setTime] = useState(new Date());
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   const [codingHours, setCodingHours] = useState(4.5); // Mock data
@@ -128,6 +135,21 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
           <p className="text-muted-foreground mt-1">Stay disciplined, stay focused.</p>
         </div>
         <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-xl border shadow-sm">
+            <span className="text-sm font-medium text-muted-foreground">Auto Report</span>
+            <button
+              onClick={() => setSendDailyReportEnabled(!sendDailyReportEnabled)}
+              className={cn(
+                "w-10 h-5 rounded-full transition-colors relative",
+                sendDailyReportEnabled ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <motion.div
+                animate={{ x: sendDailyReportEnabled ? 20 : 2 }}
+                className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm"
+              />
+            </button>
+          </div>
           <button
             onClick={handleManualReport}
             disabled={isSendingReport}
