@@ -16,7 +16,6 @@ import {
   Send,
   ShieldAlert
 } from 'lucide-react';
-import { sendDailyReport } from '../services/dailyReportService';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isAfter, parse, formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -27,8 +26,6 @@ import { RecoveryState } from '../types';
 interface DashboardProps {
   onNavigate: (page: any) => void;
   pomodoro: PomodoroState;
-  sendDailyReportEnabled: boolean;
-  setSendDailyReportEnabled: (enabled: boolean) => void;
 }
 
 const DEFAULT_PRAYER_TIMES = [
@@ -49,9 +46,7 @@ const QUOTES = [
 
 export default function Dashboard({ 
   onNavigate, 
-  pomodoro, 
-  sendDailyReportEnabled, 
-  setSendDailyReportEnabled 
+  pomodoro 
 }: DashboardProps) {
   const [time, setTime] = useState(new Date());
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
@@ -59,8 +54,6 @@ export default function Dashboard({
   const [prayerTimes, setPrayerTimes] = useLocalStorage('prayerTimes', DEFAULT_PRAYER_TIMES);
   const [completedPrayers, setCompletedPrayers] = useLocalStorage<Record<string, string[]>>('completedPrayers', {});
   const [isEditingPrayers, setIsEditingPrayers] = useState(false);
-  const [isSendingReport, setIsSendingReport] = useState(false);
-  const [reportSentStatus, setReportSentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [tempPrayers, setTempPrayers] = useState(prayerTimes);
   const [recovery] = useLocalStorage<RecoveryState>('recovery', {
     startDate: null,
@@ -83,20 +76,6 @@ export default function Dashboard({
   const handleSavePrayers = () => {
     setPrayerTimes(tempPrayers);
     setIsEditingPrayers(false);
-  };
-
-  const handleManualReport = async () => {
-    setIsSendingReport(true);
-    setReportSentStatus('idle');
-    try {
-      const success = await sendDailyReport(new Date()); // Send for today for testing
-      setReportSentStatus(success ? 'success' : 'error');
-      setTimeout(() => setReportSentStatus('idle'), 3000);
-    } catch (error) {
-      setReportSentStatus('error');
-    } finally {
-      setIsSendingReport(false);
-    }
   };
 
   const togglePrayer = (prayerName: string) => {
@@ -135,40 +114,6 @@ export default function Dashboard({
           <p className="text-muted-foreground mt-1">Stay disciplined, stay focused.</p>
         </div>
         <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="flex items-center gap-3 bg-card px-4 py-2 rounded-xl border shadow-sm">
-            <span className="text-sm font-medium text-muted-foreground">Auto Report</span>
-            <button
-              onClick={() => setSendDailyReportEnabled(!sendDailyReportEnabled)}
-              className={cn(
-                "w-10 h-5 rounded-full transition-colors relative",
-                sendDailyReportEnabled ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <motion.div
-                animate={{ x: sendDailyReportEnabled ? 20 : 2 }}
-                className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm"
-              />
-            </button>
-          </div>
-          <button
-            onClick={handleManualReport}
-            disabled={isSendingReport}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border",
-              reportSentStatus === 'success' ? "bg-green-500 text-white border-green-600" :
-              reportSentStatus === 'error' ? "bg-red-500 text-white border-red-600" :
-              "bg-card hover:bg-accent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {isSendingReport ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : reportSentStatus === 'success' ? (
-              <CheckCircle2 className="w-4 h-4" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            <span>{reportSentStatus === 'success' ? 'Report Sent' : 'Send Daily Report'}</span>
-          </button>
           <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm">
             <div className="text-right">
               <p className="text-sm font-medium text-muted-foreground">{format(time, 'EEEE, MMMM do')}</p>

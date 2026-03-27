@@ -20,8 +20,6 @@ import Pomodoro from './components/Pomodoro';
 import Notes from './components/Notes';
 import Progress from './components/Progress';
 import RecoveryTracker from './components/RecoveryTracker';
-import { subDays, isSameDay } from 'date-fns';
-import { sendDailyReport } from './services/dailyReportService';
 import { useLocalStorage } from './hooks/useLocalStorage';
 
 type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress' | 'recovery';
@@ -46,36 +44,6 @@ export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
-  const [lastReportSentDate, setLastReportSentDate] = useLocalStorage<string | null>('lastReportSentDate', null);
-  const [sendDailyReportEnabled, setSendDailyReportEnabled] = useLocalStorage<boolean>('sendDailyReportEnabled', false);
-
-  // Daily Report Logic
-  useEffect(() => {
-    const checkAndSendReport = async () => {
-      if (!sendDailyReportEnabled) return;
-
-      const now = new Date();
-      const todayStr = now.toDateString();
-      
-      // If we haven't sent a report today, and it's past 12 AM (which it always is on a new day)
-      if (lastReportSentDate !== todayStr) {
-        // We send the report for "Yesterday"
-        const yesterday = subDays(now, 1);
-        const success = await sendDailyReport(yesterday);
-        
-        if (success) {
-          setLastReportSentDate(todayStr);
-          console.log('Daily report sent for', yesterday.toDateString());
-        }
-      }
-    };
-
-    // Check every minute
-    const interval = setInterval(checkAndSendReport, 60000);
-    checkAndSendReport(); // Initial check
-
-    return () => clearInterval(interval);
-  }, [lastReportSentDate, sendDailyReportEnabled]);
 
   // Pomodoro Global State
   const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
@@ -137,8 +105,6 @@ export default function App() {
         <Dashboard 
           onNavigate={setActivePage} 
           pomodoro={pomodoro} 
-          sendDailyReportEnabled={sendDailyReportEnabled}
-          setSendDailyReportEnabled={setSendDailyReportEnabled}
         />
       );
       case 'tasks': return <TaskManager />;
@@ -150,8 +116,6 @@ export default function App() {
         <Dashboard 
           onNavigate={setActivePage} 
           pomodoro={pomodoro} 
-          sendDailyReportEnabled={sendDailyReportEnabled}
-          setSendDailyReportEnabled={setSendDailyReportEnabled}
         />
       );
     }
