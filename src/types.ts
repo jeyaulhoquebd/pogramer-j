@@ -6,6 +6,7 @@ export interface Task {
   completed: boolean;
   category: Category;
   createdAt: number;
+  completedAt?: number;
 }
 
 export interface Note {
@@ -27,4 +28,14 @@ export interface Settings {
   pomodoroTime: number;
   breakTime: number;
   codingGoal: number; // in hours
+}
+
+export interface RelapseRecord {
+  date: number;
+  reason: string;
+}
+
+export interface RecoveryState {
+  startDate: number | null;
+  relapseHistory: RelapseRecord[];
 }

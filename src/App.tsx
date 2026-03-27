@@ -9,7 +9,8 @@ import {
   Sun,
   Menu,
   X,
-  Heart
+  Heart,
+  ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -18,9 +19,12 @@ import TaskManager from './components/TaskManager';
 import Pomodoro from './components/Pomodoro';
 import Notes from './components/Notes';
 import Progress from './components/Progress';
+import RecoveryTracker from './components/RecoveryTracker';
+import { subDays, isSameDay } from 'date-fns';
+import { sendDailyReport } from './services/dailyReportService';
 import { useLocalStorage } from './hooks/useLocalStorage';
 
-type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress';
+type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress' | 'recovery';
 
 export interface PomodoroRound {
   id: string;
@@ -42,6 +46,33 @@ export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
+  const [lastReportSentDate, setLastReportSentDate] = useLocalStorage<string | null>('lastReportSentDate', null);
+
+  // Daily Report Logic
+  useEffect(() => {
+    const checkAndSendReport = async () => {
+      const now = new Date();
+      const todayStr = now.toDateString();
+      
+      // If we haven't sent a report today, and it's past 12 AM (which it always is on a new day)
+      if (lastReportSentDate !== todayStr) {
+        // We send the report for "Yesterday"
+        const yesterday = subDays(now, 1);
+        const success = await sendDailyReport(yesterday);
+        
+        if (success) {
+          setLastReportSentDate(todayStr);
+          console.log('Daily report sent for', yesterday.toDateString());
+        }
+      }
+    };
+
+    // Check every minute
+    const interval = setInterval(checkAndSendReport, 60000);
+    checkAndSendReport(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [lastReportSentDate]);
 
   // Pomodoro Global State
   const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
@@ -94,6 +125,7 @@ export default function App() {
     { id: 'pomodoro', label: 'Pomodoro', icon: Timer },
     { id: 'notes', label: 'Notes', icon: StickyNote },
     { id: 'progress', label: 'Progress', icon: BarChart3 },
+    { id: 'recovery', label: 'Freedom', icon: ShieldAlert },
   ];
 
   const renderPage = () => {
@@ -103,6 +135,7 @@ export default function App() {
       case 'pomodoro': return <Pomodoro state={pomodoro} setState={setPomodoro} />;
       case 'notes': return <Notes />;
       case 'progress': return <Progress />;
+      case 'recovery': return <RecoveryTracker />;
       default: return <Dashboard onNavigate={setActivePage} pomodoro={pomodoro} />;
     }
   };

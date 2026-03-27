@@ -37,7 +37,17 @@ export default function TaskManager() {
   };
 
   const toggleTask = (id: string) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    setTasks(tasks.map(t => {
+      if (t.id === id) {
+        const isCompleting = !t.completed;
+        return { 
+          ...t, 
+          completed: isCompleting,
+          completedAt: isCompleting ? Date.now() : undefined
+        };
+      }
+      return t;
+    }));
   };
 
   const deleteTask = (id: string) => {

@@ -12,13 +12,17 @@ import {
   Timer,
   Settings,
   X,
-  Save
+  Save,
+  Send,
+  ShieldAlert
 } from 'lucide-react';
+import { sendDailyReport } from '../services/dailyReportService';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, isAfter, parse } from 'date-fns';
+import { format, isAfter, parse, formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
 import { PomodoroState } from '../App';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { RecoveryState } from '../types';
 
 interface DashboardProps {
   onNavigate: (page: any) => void;
@@ -48,7 +52,13 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
   const [prayerTimes, setPrayerTimes] = useLocalStorage('prayerTimes', DEFAULT_PRAYER_TIMES);
   const [completedPrayers, setCompletedPrayers] = useLocalStorage<Record<string, string[]>>('completedPrayers', {});
   const [isEditingPrayers, setIsEditingPrayers] = useState(false);
+  const [isSendingReport, setIsSendingReport] = useState(false);
+  const [reportSentStatus, setReportSentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [tempPrayers, setTempPrayers] = useState(prayerTimes);
+  const [recovery] = useLocalStorage<RecoveryState>('recovery', {
+    startDate: null,
+    relapseHistory: []
+  });
   const codingGoal = 8;
 
   useEffect(() => {
@@ -66,6 +76,20 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
   const handleSavePrayers = () => {
     setPrayerTimes(tempPrayers);
     setIsEditingPrayers(false);
+  };
+
+  const handleManualReport = async () => {
+    setIsSendingReport(true);
+    setReportSentStatus('idle');
+    try {
+      const success = await sendDailyReport(new Date()); // Send for today for testing
+      setReportSentStatus(success ? 'success' : 'error');
+      setTimeout(() => setReportSentStatus('idle'), 3000);
+    } catch (error) {
+      setReportSentStatus('error');
+    } finally {
+      setIsSendingReport(false);
+    }
   };
 
   const togglePrayer = (prayerName: string) => {
@@ -103,13 +127,34 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
           <h2 className="text-3xl font-bold tracking-tight">Salam, Programmer</h2>
           <p className="text-muted-foreground mt-1">Stay disciplined, stay focused.</p>
         </div>
-        <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm">
-          <div className="text-right">
-            <p className="text-sm font-medium text-muted-foreground">{format(time, 'EEEE, MMMM do')}</p>
-            <p className="text-2xl font-bold font-mono uppercase">{format(time, 'hh:mm:ss a')}</p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
-            <Clock className="w-6 h-6" />
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <button
+            onClick={handleManualReport}
+            disabled={isSendingReport}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all shadow-sm border",
+              reportSentStatus === 'success' ? "bg-green-500 text-white border-green-600" :
+              reportSentStatus === 'error' ? "bg-red-500 text-white border-red-600" :
+              "bg-card hover:bg-accent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {isSendingReport ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : reportSentStatus === 'success' ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span>{reportSentStatus === 'success' ? 'Report Sent' : 'Send Daily Report'}</span>
+          </button>
+          <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm">
+            <div className="text-right">
+              <p className="text-sm font-medium text-muted-foreground">{format(time, 'EEEE, MMMM do')}</p>
+              <p className="text-2xl font-bold font-mono uppercase">{format(time, 'hh:mm:ss a')}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
+              <Clock className="w-6 h-6" />
+            </div>
           </div>
         </div>
       </header>
@@ -157,6 +202,44 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
                 <span>{pomodoro.rounds.filter(r => r.type === 'focus' && new Date(r.completedAt).toDateString() === new Date().toDateString()).length}</span>
                 <span className="text-[10px] uppercase opacity-60">Rounds</span>
               </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Freedom Tracker Card */}
+        <motion.div 
+          whileHover={{ y: -4 }}
+          onClick={() => onNavigate('recovery')}
+          className="p-8 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/20 flex flex-col justify-between cursor-pointer relative overflow-hidden group"
+        >
+          <ShieldAlert className="absolute -top-4 -right-4 w-32 h-32 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-500" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-100">
+                Freedom Path
+              </span>
+            </div>
+            <div>
+              {recovery.startDate ? (
+                <>
+                  <p className="text-4xl font-bold font-mono mb-1">
+                    {Math.floor((Date.now() - recovery.startDate) / (1000 * 60 * 60 * 24))}
+                    <span className="text-xl font-normal opacity-80 ml-1">d</span>
+                    <span className="mx-1 opacity-30">:</span>
+                    {Math.floor(((Date.now() - recovery.startDate) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0')}
+                    <span className="text-xl font-normal opacity-80 ml-1">h</span>
+                  </p>
+                  <p className="text-sm text-indigo-100/80">Keep going, you're doing great!</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold mb-1">Start Journey</p>
+                  <p className="text-sm text-indigo-100/80">Take the first step today.</p>
+                </>
+              )}
             </div>
           </div>
         </motion.div>

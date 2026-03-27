@@ -11,7 +11,16 @@ import {
   ChevronRight,
   StickyNote,
   Type,
-  ArrowLeft
+  ArrowLeft,
+  Bold,
+  Italic,
+  List,
+  Heading1,
+  Heading2,
+  Code as CodeIcon,
+  Quote,
+  Link,
+  Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -27,8 +36,47 @@ export default function Notes() {
   const [isPreview, setIsPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
+
+  const insertText = (before: string, after: string = '', isBlock: boolean = false) => {
+    if (!textareaRef.current || !activeNote) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+
+    let prefix = before;
+    let suffix = after;
+
+    if (isBlock) {
+      // Ensure we are at the start of a line or after a newline
+      const beforeText = text.substring(0, start);
+      if (beforeText.length > 0 && !beforeText.endsWith('\n')) {
+        prefix = '\n' + before;
+      }
+    }
+
+    const newContent = 
+      text.substring(0, start) + 
+      prefix + 
+      selectedText + 
+      suffix + 
+      text.substring(end);
+
+    updateNote(activeNote.id, { content: newContent });
+
+    // Reset focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      const newStart = start + prefix.length;
+      const newEnd = end + prefix.length;
+      textarea.setSelectionRange(newStart, newEnd);
+    }, 0);
+  };
 
   const createNote = () => {
     const newNote: Note = {
@@ -201,13 +249,84 @@ export default function Notes() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col">
+              {!isPreview && (
+                <div className="flex flex-wrap items-center gap-1 mb-4 p-1 bg-accent/20 rounded-xl w-fit">
+                  <button
+                    onClick={() => insertText('**', '**')}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Bold"
+                  >
+                    <Bold className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => insertText('_', '_')}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Italic"
+                  >
+                    <Italic className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 bg-muted-foreground/20 mx-1" />
+                  <button
+                    onClick={() => insertText('# ', '', true)}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Heading 1"
+                  >
+                    <Heading1 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => insertText('## ', '', true)}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Heading 2"
+                  >
+                    <Heading2 className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 bg-muted-foreground/20 mx-1" />
+                  <button
+                    onClick={() => insertText('- ', '', true)}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Bullet List"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => insertText('> ', '', true)}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Quote"
+                  >
+                    <Quote className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 bg-muted-foreground/20 mx-1" />
+                  <button
+                    onClick={() => insertText('[', '](https://)')}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Link"
+                  >
+                    <Link className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => insertText('`', '`')}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Inline Code"
+                  >
+                    <CodeIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => insertText('\n---\n', '', true)}
+                    className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    title="Horizontal Rule"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               {isPreview ? (
                 <div className="prose dark:prose-invert max-w-none prose-headings:font-bold prose-p:text-muted-foreground prose-pre:bg-accent prose-pre:text-foreground">
                   <ReactMarkdown>{activeNote.content}</ReactMarkdown>
                 </div>
               ) : (
                 <textarea
+                  ref={textareaRef}
                   value={activeNote.content}
                   onChange={(e) => updateNote(activeNote.id, { content: e.target.value })}
                   placeholder="Start writing in markdown..."
