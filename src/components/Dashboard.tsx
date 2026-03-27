@@ -46,6 +46,7 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   const [codingHours, setCodingHours] = useState(4.5); // Mock data
   const [prayerTimes, setPrayerTimes] = useLocalStorage('prayerTimes', DEFAULT_PRAYER_TIMES);
+  const [completedPrayers, setCompletedPrayers] = useLocalStorage<Record<string, string[]>>('completedPrayers', {});
   const [isEditingPrayers, setIsEditingPrayers] = useState(false);
   const [tempPrayers, setTempPrayers] = useState(prayerTimes);
   const codingGoal = 8;
@@ -65,6 +66,28 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
   const handleSavePrayers = () => {
     setPrayerTimes(tempPrayers);
     setIsEditingPrayers(false);
+  };
+
+  const togglePrayer = (prayerName: string) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const currentDayPrayers = completedPrayers[today] || [];
+    
+    let newDayPrayers;
+    if (currentDayPrayers.includes(prayerName)) {
+      newDayPrayers = currentDayPrayers.filter(p => p !== prayerName);
+    } else {
+      newDayPrayers = [...currentDayPrayers, prayerName];
+    }
+
+    setCompletedPrayers({
+      ...completedPrayers,
+      [today]: newDayPrayers
+    });
+  };
+
+  const isPrayerCompleted = (prayerName: string) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return (completedPrayers[today] || []).includes(prayerName);
   };
 
   const formatPomodoroTime = (seconds: number) => {
@@ -126,9 +149,15 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
           </div>
           <div>
             <p className="text-4xl font-bold font-mono mb-1">{formatPomodoroTime(pomodoro.timeLeft)}</p>
-            <p className="text-sm text-muted-foreground">
-              {pomodoro.isActive ? 'Session in progress...' : 'Ready to start?'}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {pomodoro.isActive ? 'Session in progress...' : 'Ready to start?'}
+              </p>
+              <div className="flex items-center gap-1 text-xs font-bold text-primary">
+                <span>{pomodoro.rounds.filter(r => r.type === 'focus' && new Date(r.completedAt).toDateString() === new Date().toDateString()).length}</span>
+                <span className="text-[10px] uppercase opacity-60">Rounds</span>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -152,20 +181,41 @@ export default function Dashboard({ onNavigate, pomodoro }: DashboardProps) {
             </button>
           </div>
           <div className="space-y-2">
-            {prayerTimes.map((p: any) => (
-              <div 
-                key={p.name} 
-                className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-colors",
-                  p.name === nextPrayer.name ? "bg-primary/10 border border-primary/20" : "hover:bg-accent/50"
-                )}
-              >
-                <span className={cn("font-medium", p.name === nextPrayer.name ? "text-primary" : "text-muted-foreground")}>{p.name}</span>
-                <span className={cn("font-mono font-bold uppercase", p.name === nextPrayer.name ? "text-primary" : "")}>
-                  {format(parse(p.time, 'HH:mm', new Date()), 'h:mm a')}
-                </span>
-              </div>
-            ))}
+            {prayerTimes.map((p: any) => {
+              const completed = isPrayerCompleted(p.name);
+              const isNext = p.name === nextPrayer.name;
+              
+              return (
+                <div 
+                  key={p.name} 
+                  onClick={() => togglePrayer(p.name)}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer group",
+                    isNext ? "bg-primary/10 border border-primary/20" : "hover:bg-accent/50 border border-transparent",
+                    completed && "opacity-60"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors",
+                      completed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 group-hover:border-primary/50"
+                    )}>
+                      {completed && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </div>
+                    <span className={cn(
+                      "font-medium transition-colors", 
+                      isNext ? "text-primary" : "text-muted-foreground",
+                      completed && "line-through"
+                    )}>
+                      {p.name}
+                    </span>
+                  </div>
+                  <span className={cn("font-mono font-bold uppercase", isNext ? "text-primary" : "text-muted-foreground/70")}>
+                    {format(parse(p.time, 'HH:mm', new Date()), 'h:mm a')}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

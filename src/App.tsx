@@ -22,10 +22,20 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 
 type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress';
 
+export interface PomodoroRound {
+  id: string;
+  type: 'focus' | 'break';
+  duration: number;
+  completedAt: string;
+}
+
 export interface PomodoroState {
   timeLeft: number;
   isActive: boolean;
   mode: 'focus' | 'break';
+  focusDuration: number;
+  breakDuration: number;
+  rounds: PomodoroRound[];
 }
 
 export default function App() {
@@ -34,10 +44,13 @@ export default function App() {
   const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
 
   // Pomodoro Global State
-  const [pomodoro, setPomodoro] = useState<PomodoroState>({
+  const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
     timeLeft: 25 * 60,
     isActive: false,
-    mode: 'focus'
+    mode: 'focus',
+    focusDuration: 25 * 60,
+    breakDuration: 5 * 60,
+    rounds: []
   });
 
   useEffect(() => {
@@ -47,16 +60,23 @@ export default function App() {
         setPomodoro(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
       }, 1000);
     } else if (pomodoro.timeLeft === 0) {
+      const completedRound: PomodoroRound = {
+        id: crypto.randomUUID(),
+        type: pomodoro.mode,
+        duration: pomodoro.mode === 'focus' ? pomodoro.focusDuration : pomodoro.breakDuration,
+        completedAt: new Date().toISOString()
+      };
+
       setPomodoro(prev => ({
         ...prev,
         isActive: false,
         mode: prev.mode === 'focus' ? 'break' : 'focus',
-        timeLeft: prev.mode === 'focus' ? 5 * 60 : 25 * 60
+        timeLeft: prev.mode === 'focus' ? prev.breakDuration : prev.focusDuration,
+        rounds: [...prev.rounds, completedRound]
       }));
-      // Trigger alarm logic could be here or in the component
     }
     return () => clearInterval(timer);
-  }, [pomodoro.isActive, pomodoro.timeLeft]);
+  }, [pomodoro.isActive, pomodoro.timeLeft, pomodoro.focusDuration, pomodoro.breakDuration, pomodoro.mode]);
 
   useEffect(() => {
     if (theme === 'dark') {
