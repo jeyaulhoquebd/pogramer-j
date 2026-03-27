@@ -11,7 +11,8 @@ import {
   X,
   Heart,
   ShieldAlert,
-  Loader2
+  Loader2,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -23,7 +24,7 @@ import Progress from './components/Progress';
 import RecoveryTracker from './components/RecoveryTracker';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { auth } from './firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { AuthScreen, UserProfile } from './components/Auth';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -187,8 +188,9 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="p-4 border-t space-y-4">
+        <div className="p-4 border-t space-y-2">
           <UserProfile />
+          
           <button 
             onClick={toggleTheme}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
@@ -196,8 +198,16 @@ export default function App() {
             {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             <span className="font-medium">{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
           </button>
+
+          <button 
+            onClick={() => signOut(auth)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Log Out</span>
+          </button>
           
-          <div className="px-4 py-3 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center gap-3">
+          <div className="px-4 py-3 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center gap-3 mt-2">
             <Heart className="w-5 h-5 text-brand-500 fill-brand-500" />
             <div className="text-xs">
               <p className="font-semibold text-brand-600 dark:text-brand-400">Daily Reminder</p>
@@ -271,7 +281,7 @@ export default function App() {
                 ))}
               </nav>
 
-              <div className="p-4 border-t space-y-4">
+              <div className="p-4 border-t space-y-2">
                 <UserProfile />
                 <button 
                   onClick={toggleTheme}
@@ -279,6 +289,16 @@ export default function App() {
                 >
                   {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   <span className="font-medium">{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    signOut(auth);
+                    setIsSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="font-medium">Log Out</span>
                 </button>
               </div>
             </motion.aside>
