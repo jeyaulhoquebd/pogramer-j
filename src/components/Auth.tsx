@@ -38,7 +38,15 @@ export const AuthScreen: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
-      setError(err.message || 'Failed to sign in with Google');
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled because the popup was closed. Please try again and keep the window open.');
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        setError('A sign-in request is already in progress. Please check your open windows.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('The sign-in popup was blocked by your browser. Please allow popups for this site.');
+      } else {
+        setError(err.message || 'Failed to sign in with Google');
+      }
     } finally {
       setLoading(false);
     }
