@@ -1,16 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  GithubAuthProvider,
-  signInWithPopup, 
-  signOut, 
-  onAuthStateChanged, 
-  User,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile
-} from 'firebase/auth';
+import { getAuth, signInAnonymously, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, getDocFromServer, collection, onSnapshot, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -18,10 +7,6 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-
-export const githubProvider = new GithubAuthProvider();
 
 export enum OperationType {
   CREATE = 'create',

@@ -7,6 +7,7 @@ export interface Task {
   category: Category;
   createdAt: number;
   completedAt?: number;
+  dueDate?: number; // timestamp
 }
 
 export interface Note {

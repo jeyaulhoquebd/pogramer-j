@@ -23,10 +23,10 @@ import Notes from './components/Notes';
 import Progress from './components/Progress';
 import RecoveryTracker from './components/RecoveryTracker';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { auth } from './firebase';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { AuthScreen, UserProfile } from './components/Auth';
 import ErrorBoundary from './components/ErrorBoundary';
+import LoginScreen from './components/LoginScreen';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress' | 'recovery';
 
@@ -47,7 +47,7 @@ export interface PomodoroState {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useLocalStorage<{ name: string; address: string } | null>('userProfile', null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [activePage, setActivePage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -55,11 +55,13 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+      if (!user) {
+        setProfile(null);
+      }
       setIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [setProfile]);
 
   // Pomodoro Global State
   const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
@@ -114,10 +116,10 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!profile) {
     return (
       <ErrorBoundary>
-        <AuthScreen />
+        <LoginScreen onLogin={setProfile} />
       </ErrorBoundary>
     );
   }
@@ -189,7 +191,11 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t space-y-2">
-          <UserProfile />
+          <div className="px-4 py-3 rounded-xl bg-accent/50 border mb-2">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ব্যবহারকারী</p>
+            <p className="font-bold truncate">{profile.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{profile.address}</p>
+          </div>
           
           <button 
             onClick={toggleTheme}
@@ -200,7 +206,10 @@ export default function App() {
           </button>
 
           <button 
-            onClick={() => signOut(auth)}
+            onClick={() => {
+              signOut(auth);
+              setProfile(null);
+            }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
           >
             <LogOut className="w-5 h-5" />
@@ -282,7 +291,11 @@ export default function App() {
               </nav>
 
               <div className="p-4 border-t space-y-2">
-                <UserProfile />
+                <div className="px-4 py-3 rounded-xl bg-accent/50 border mb-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ব্যবহারকারী</p>
+                  <p className="font-bold truncate">{profile.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{profile.address}</p>
+                </div>
                 <button 
                   onClick={toggleTheme}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors text-muted-foreground"
@@ -293,6 +306,7 @@ export default function App() {
                 <button 
                   onClick={() => {
                     signOut(auth);
+                    setProfile(null);
                     setIsSidebarOpen(false);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
