@@ -12,7 +12,9 @@ import {
   Heart,
   ShieldAlert,
   Loader2,
-  LogOut
+  LogOut,
+  Globe,
+  Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -23,10 +25,12 @@ import Notes from './components/Notes';
 import Progress from './components/Progress';
 import RecoveryTracker from './components/RecoveryTracker';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useFirestoreSync } from './hooks/useFirestoreSync';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginScreen from './components/LoginScreen';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { UserProfile } from './types';
 
 type Page = 'dashboard' | 'tasks' | 'pomodoro' | 'notes' | 'progress' | 'recovery';
 
@@ -47,7 +51,7 @@ export interface PomodoroState {
 }
 
 export default function App() {
-  const [profile, setProfile] = useLocalStorage<{ name: string; address: string } | null>('userProfile', null);
+  const [profile, setProfile] = useLocalStorage<UserProfile | null>('userProfile', null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [activePage, setActivePage] = useState<Page>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -55,23 +59,39 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // Only clear profile if the user was NOT in local mode
       if (!user) {
-        setProfile(null);
+        setProfile(prev => {
+          if (prev?.isLocal) return prev;
+          return null;
+        });
+      } else {
+        // If we have a user, ensure profile is set for online mode if not already
+        setProfile(prev => {
+          if (prev) return prev;
+          return {
+            uid: user.uid,
+            name: user.displayName || 'User',
+            country: 'Bangladesh',
+            city: 'Dhaka',
+            isLocal: false
+          };
+        });
       }
       setIsAuthReady(true);
     });
     return () => unsubscribe();
   }, [setProfile]);
 
-  // Pomodoro Global State
-  const [pomodoro, setPomodoro] = useLocalStorage<PomodoroState>('pomodoro', {
+  // Pomodoro Global State with Firestore Sync
+  const [pomodoro, setPomodoro] = useFirestoreSync<PomodoroState>('pomodoro', {
     timeLeft: 25 * 60,
     isActive: false,
     mode: 'focus',
     focusDuration: 25 * 60,
     breakDuration: 5 * 60,
     rounds: []
-  });
+  }, profile?.isLocal, profile?.uid);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -139,13 +159,15 @@ export default function App() {
         <Dashboard 
           onNavigate={setActivePage} 
           pomodoro={pomodoro} 
+          isLocal={profile.isLocal}
+          uid={profile.uid}
         />
       );
-      case 'tasks': return <TaskManager />;
+      case 'tasks': return <TaskManager isLocal={profile.isLocal} uid={profile.uid} />;
       case 'pomodoro': return <Pomodoro state={pomodoro} setState={setPomodoro} />;
-      case 'notes': return <Notes />;
-      case 'progress': return <Progress />;
-      case 'recovery': return <RecoveryTracker />;
+      case 'notes': return <Notes isLocal={profile.isLocal} uid={profile.uid} />;
+      case 'progress': return <Progress isLocal={profile.isLocal} uid={profile.uid} />;
+      case 'recovery': return <RecoveryTracker isLocal={profile.isLocal} uid={profile.uid} />;
       default: return (
         <Dashboard 
           onNavigate={setActivePage} 
@@ -154,6 +176,30 @@ export default function App() {
       );
     }
   };
+
+  const UserInfo = () => (
+    <div className="px-4 py-3 rounded-xl bg-accent/50 border mb-2">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ব্যবহারকারী</p>
+        {profile.isLocal && (
+          <span className="text-[8px] font-bold bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+            Offline Mode
+          </span>
+        )}
+      </div>
+      <p className="font-bold truncate">{profile.name}</p>
+      <div className="flex flex-col gap-1 mt-1">
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Globe className="w-3 h-3" />
+          <span className="truncate">{profile.country}</span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Building2 className="w-3 h-3" />
+          <span className="truncate">{profile.city}</span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <ErrorBoundary>
@@ -191,11 +237,7 @@ export default function App() {
         </nav>
 
         <div className="p-4 border-t space-y-2">
-          <div className="px-4 py-3 rounded-xl bg-accent/50 border mb-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ব্যবহারকারী</p>
-            <p className="font-bold truncate">{profile.name}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{profile.address}</p>
-          </div>
+          <UserInfo />
           
           <button 
             onClick={toggleTheme}
@@ -291,11 +333,7 @@ export default function App() {
               </nav>
 
               <div className="p-4 border-t space-y-2">
-                <div className="px-4 py-3 rounded-xl bg-accent/50 border mb-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ব্যবহারকারী</p>
-                  <p className="font-bold truncate">{profile.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{profile.address}</p>
-                </div>
+                <UserInfo />
                 <button 
                   onClick={toggleTheme}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-accent transition-colors text-muted-foreground"

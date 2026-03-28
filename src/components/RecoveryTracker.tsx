@@ -11,15 +11,20 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useFirestoreSync } from '../hooks/useFirestoreSync';
 import { RecoveryState, RelapseRecord } from '../types';
 import { cn } from '../lib/utils';
 
-export default function RecoveryTracker() {
-  const [recovery, setRecovery] = useLocalStorage<RecoveryState>('recovery', {
+interface RecoveryTrackerProps {
+  isLocal?: boolean;
+  uid?: string;
+}
+
+export default function RecoveryTracker({ isLocal = false, uid }: RecoveryTrackerProps) {
+  const [recovery, setRecovery] = useFirestoreSync<RecoveryState>('recovery', {
     startDate: null,
     relapseHistory: []
-  });
+  }, isLocal, uid);
 
   const [isRelapseModalOpen, setIsRelapseModalOpen] = useState(false);
   const [relapseReason, setRelapseReason] = useState('');

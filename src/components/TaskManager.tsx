@@ -13,16 +13,22 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useFirestoreSync } from '../hooks/useFirestoreSync';
 import { Task, Category } from '../types';
 import { cn } from '../lib/utils';
 
-export default function TaskManager() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', []);
+interface TaskManagerProps {
+  isLocal?: boolean;
+  uid?: string;
+}
+
+export default function TaskManager({ isLocal = false, uid }: TaskManagerProps) {
+  const [tasks, setTasks] = useFirestoreSync<Task[]>('tasks', [], isLocal, uid);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Personal');
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const addTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,9 +67,10 @@ export default function TaskManager() {
   };
 
   const filteredTasks = tasks.filter(t => {
-    if (filter === 'active') return !t.completed;
-    if (filter === 'completed') return t.completed;
-    return true;
+    const matchesFilter = filter === 'all' ? true : (filter === 'active' ? !t.completed : t.completed);
+    const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        t.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   const formatDueDate = (timestamp: number) => {
@@ -139,6 +146,17 @@ export default function TaskManager() {
           </div>
         </div>
       </form>
+
+      <div className="relative group">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search tasks by title or category..."
+          className="w-full pl-12 pr-4 py-3 bg-card border rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none transition-all shadow-sm"
+        />
+      </div>
 
       <div className="flex items-center justify-between">
         <div className="flex bg-card border rounded-xl p-1">

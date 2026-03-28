@@ -20,12 +20,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, isAfter, parse, formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
 import { PomodoroState } from '../App';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useFirestoreSync } from '../hooks/useFirestoreSync';
 import { RecoveryState } from '../types';
 
 interface DashboardProps {
   onNavigate: (page: any) => void;
   pomodoro: PomodoroState;
+  isLocal?: boolean;
+  uid?: string;
 }
 
 const DEFAULT_PRAYER_TIMES = [
@@ -46,19 +48,21 @@ const QUOTES = [
 
 export default function Dashboard({ 
   onNavigate, 
-  pomodoro 
+  pomodoro,
+  isLocal = false,
+  uid
 }: DashboardProps) {
   const [time, setTime] = useState(new Date());
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   const [codingHours, setCodingHours] = useState(4.5); // Mock data
-  const [prayerTimes, setPrayerTimes] = useLocalStorage('prayerTimes', DEFAULT_PRAYER_TIMES);
-  const [completedPrayers, setCompletedPrayers] = useLocalStorage<Record<string, string[]>>('completedPrayers', {});
+  const [prayerTimes, setPrayerTimes] = useFirestoreSync('prayerTimes', DEFAULT_PRAYER_TIMES, isLocal, uid);
+  const [completedPrayers, setCompletedPrayers] = useFirestoreSync<Record<string, string[]>>('completedPrayers', {}, isLocal, uid);
   const [isEditingPrayers, setIsEditingPrayers] = useState(false);
   const [tempPrayers, setTempPrayers] = useState(prayerTimes);
-  const [recovery] = useLocalStorage<RecoveryState>('recovery', {
+  const [recovery] = useFirestoreSync<RecoveryState>('recovery', {
     startDate: null,
     relapseHistory: []
-  });
+  }, isLocal, uid);
   const codingGoal = 8;
 
   useEffect(() => {

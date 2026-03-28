@@ -1,24 +1,38 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { User, MapPin, ArrowRight, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { User, MapPin, ArrowRight, Loader2, Globe, Building2, LogIn, UserPlus } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { UserProfile } from '../types';
 
 interface LoginScreenProps {
-  onLogin: (profile: { name: string; address: string }) => void;
+  onLogin: (profile: UserProfile) => void;
 }
 
+const COUNTRIES = ['Bangladesh', 'India', 'USA', 'UK', 'Canada', 'Australia', 'Other'];
+const CITIES: Record<string, string[]> = {
+  'Bangladesh': ['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Barisal', 'Rangpur', 'Mymensingh'],
+  'India': ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Kolkata', 'Surat'],
+  'USA': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego'],
+  'UK': ['London', 'Birmingham', 'Glasgow', 'Liverpool', 'Leeds', 'Sheffield', 'Edinburgh', 'Bristol'],
+  'Canada': ['Toronto', 'Montreal', 'Vancouver', 'Calgary', 'Edmonton', 'Ottawa', 'Winnipeg', 'Quebec City'],
+  'Australia': ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Gold Coast', 'Canberra', 'Hobart'],
+  'Other': ['Global City']
+};
+
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !address.trim()) {
-      setError('দয়া করে নাম এবং ঠিকানা উভয়ই প্রদান করুন।');
+    if (!name.trim() || !country || !city) {
+      setError('দয়া করে সব তথ্য প্রদান করুন।');
       return;
     }
 
@@ -26,41 +40,70 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setError('');
 
     try {
-      // Sign in anonymously to have a Firebase context
+      // 1. Sign in anonymously first to have an authenticated context for the query
       const userCredential = await signInAnonymously(auth);
-      const user = userCredential.user;
+      const currentUser = userCredential.user;
 
-      // Save profile to Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        name,
-        address,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      // 2. Search for existing user with this Name and City
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef, 
+        where('name', '==', name.trim()), 
+        where('city', '==', city)
+      );
+      const querySnapshot = await getDocs(q);
 
-      // Pass to parent
-      onLogin({ name, address });
+      if (mode === 'login') {
+        if (querySnapshot.empty) {
+          setError('এই নাম এবং শহরে কোনো অ্যাকাউন্ট পাওয়া যায়নি। দয়া করে সাইন আপ করুন।');
+          setIsLoading(false);
+          return;
+        }
+        
+        const userData = querySnapshot.docs[0].data();
+        onLogin({ 
+          name: userData.name, 
+          country: userData.country, 
+          city: userData.city, 
+          uid: userData.uid, // Use the stored UID for data sync
+          isLocal: false 
+        });
+      } else {
+        // Sign Up Mode
+        if (!querySnapshot.empty) {
+          setError('এই নাম এবং শহরে ইতিমধ্যে একটি অ্যাকাউন্ট আছে। দয়া করে লগইন করুন।');
+          setIsLoading(false);
+          return;
+        }
+
+        const newUser: UserProfile = {
+          uid: currentUser.uid,
+          name: name.trim(),
+          country,
+          city,
+          isLocal: false
+        };
+
+        await setDoc(doc(db, 'users', currentUser.uid), {
+          ...newUser,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        onLogin(newUser);
+      }
     } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.code === 'auth/admin-restricted-operation') {
-        setError('ফায়ারবেস কনসোলে "Anonymous Authentication" বন্ধ আছে। দয়া করে এটি সচল করুন। (Authentication > Sign-in method > Anonymous > Enable)');
-        // Allow fallback to local mode for testing
-        setCanFallback(true);
-      } else if (err.code === 'auth/operation-not-allowed') {
-        setError('এই লগইন পদ্ধতিটি সচল করা হয়নি। দয়া করে ফায়ারবেস কনসোল চেক করুন।');
+      console.error('Auth error:', err);
+      
+      if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
+        // Fallback to local mode
+        onLogin({ name, country, city, isLocal: true });
       } else {
         setError('কিছু ভুল হয়েছে। দয়া করে আবার চেষ্টা করুন।');
       }
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const [canFallback, setCanFallback] = useState(false);
-
-  const handleFallback = () => {
-    onLogin({ name, address });
   };
 
   return (
@@ -72,10 +115,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       >
         <div className="text-center space-y-2">
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-primary" />
+            {mode === 'login' ? <LogIn className="w-8 h-8 text-primary" /> : <UserPlus className="w-8 h-8 text-primary" />}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">স্বাগতম!</h1>
-          <p className="text-muted-foreground">আপনার নাম এবং ঠিকানা দিয়ে প্রবেশ করুন।</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {mode === 'login' ? 'লগইন করুন' : 'সাইন আপ করুন'}
+          </h1>
+          <p className="text-muted-foreground">
+            {mode === 'login' ? 'আপনার নাম এবং শহর দিয়ে প্রবেশ করুন।' : 'আপনার তথ্য দিয়ে নতুন অ্যাকাউন্ট তৈরি করুন।'}
+          </p>
+        </div>
+
+        <div className="flex bg-accent/50 p-1 rounded-2xl">
+          <button
+            onClick={() => setMode('login')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'login' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
+          >
+            লগইন
+          </button>
+          <button
+            onClick={() => setMode('signup')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'signup' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
+          >
+            সাইন আপ
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -83,18 +145,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive text-sm font-medium space-y-2"
+              className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-destructive text-sm font-medium"
             >
-              <p>{error}</p>
-              {canFallback && (
-                <button 
-                  type="button"
-                  onClick={handleFallback}
-                  className="w-full py-2 bg-destructive/20 hover:bg-destructive/30 rounded-xl text-xs font-bold transition-colors"
-                >
-                  অফলাইন মোডে প্রবেশ করুন (শুধুমাত্র এই ব্রাউজারে)
-                </button>
-              )}
+              {error}
             </motion.div>
           )}
 
@@ -115,16 +168,45 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
             <div className="space-y-2">
               <label className="text-sm font-semibold px-1 flex items-center gap-2">
-                <MapPin className="w-4 h-4" /> ঠিকানা (Address)
+                <Globe className="w-4 h-4" /> দেশ (Country)
               </label>
-              <textarea
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="আপনার ঠিকানা লিখুন"
-                className="w-full px-5 py-3 rounded-2xl bg-accent/50 border focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none h-24"
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setCity('');
+                }}
+                className="w-full px-5 py-3 rounded-2xl bg-accent/50 border focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
                 required
-              />
+              >
+                <option value="">দেশ নির্বাচন করুন</option>
+                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
+
+            <AnimatePresence mode="wait">
+              {country && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
+                  <label className="text-sm font-semibold px-1 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" /> শহর (City)
+                  </label>
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-5 py-3 rounded-2xl bg-accent/50 border focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none"
+                    required
+                  >
+                    <option value="">শহর নির্বাচন করুন</option>
+                    {CITIES[country]?.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <button
@@ -136,7 +218,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                প্রবেশ করুন <ArrowRight className="w-5 h-5" />
+                {mode === 'login' ? 'প্রবেশ করুন' : 'তৈরি করুন'} <ArrowRight className="w-5 h-5" />
               </>
             )}
           </button>
@@ -144,7 +226,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
         <div className="pt-4 border-t text-center">
           <p className="text-xs text-muted-foreground">
-            আপনার তথ্য শুধুমাত্র আপনার ব্রাউজারে সংরক্ষিত থাকবে।
+            {mode === 'login' ? 'আপনার নাম এবং শহর দিয়ে যেকোনো ব্রাউজার থেকে লগইন করুন।' : 'আপনার তথ্য দিয়ে একটি স্থায়ী প্রোফাইল তৈরি করুন।'}
           </p>
         </div>
       </motion.div>

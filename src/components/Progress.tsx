@@ -33,7 +33,12 @@ const DATA = [
   { day: 'Sun', coding: 4.0, tasks: 7, focus: 110 },
 ];
 
-export default function Progress() {
+interface ProgressProps {
+  isLocal?: boolean;
+  uid?: string;
+}
+
+export default function Progress({ isLocal = false, uid }: ProgressProps) {
   const stats = [
     { label: 'Total Coding', value: '34.5h', icon: Clock, color: 'text-orange-500', bg: 'bg-orange-500/10' },
     { label: 'Tasks Done', value: '61', icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' },

@@ -24,13 +24,18 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useFirestoreSync } from '../hooks/useFirestoreSync';
 import { Note } from '../types';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 
-export default function Notes() {
-  const [notes, setNotes] = useLocalStorage<Note[]>('notes', []);
+interface NotesProps {
+  isLocal?: boolean;
+  uid?: string;
+}
+
+export default function Notes({ isLocal = false, uid }: NotesProps) {
+  const [notes, setNotes] = useFirestoreSync<Note[]>('notes', [], isLocal, uid);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPreview, setIsPreview] = useState(false);
